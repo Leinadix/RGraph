@@ -1,11 +1,7 @@
 @echo off
-echo Starting Graph App servers...
+echo Starting GraphApp...
 
-:: Start the Express server in a new window
-start cmd /k "cd %~dp0 && npm run server"
+start cmd /k "cd server && node server.js"
+start cmd /k "npm run dev"
 
-:: Wait a moment for the API server to start
-timeout /t 2 > nul
-
-:: Start the React dev server in the current window
-npm run dev 
+echo Server and client started! 

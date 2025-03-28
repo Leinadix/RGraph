@@ -605,4 +605,451 @@ html, body {
     color: #aaa;
     background: rgba(255, 255, 255, 0.05);
   }
+}
+
+/* App Container and Layout */
+.App {
+  text-align: center;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #1e1e1e;
+  color: #e0e0e0;
+}
+
+.App-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  background-color: #121212;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  height: 60px;
+  z-index: 10;
+}
+
+.logo {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #4caf50;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  justify-content: space-between;
+  margin-left: 1rem;
+}
+
+.current-project {
+  display: flex;
+  align-items: center;
+  font-weight: 500;
+  color: #e0e0e0;
+  background-color: rgba(255, 255, 255, 0.08);
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  max-width: 300px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.header-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.header-buttons button {
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  border: none;
+  background-color: #333;
+  color: #e0e0e0;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+  font-size: 0.9rem;
+}
+
+.header-buttons button:hover {
+  background-color: #444;
+  transform: translateY(-1px);
+}
+
+.exit-button {
+  background-color: #f44336 !important;
+  color: white !important;
+}
+
+.exit-button:hover {
+  background-color: #d32f2f !important;
+}
+
+/* Main Content */
+.main-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ReactFlow Container */
+.react-flow {
+  width: 100%;
+  height: 100%;
+  background-color: #2d2d2d;
+}
+
+.react-flow__node {
+  font-size: 14px;
+  border-radius: 6px;
+  border: 1px solid #555;
+  padding: 10px;
+  background-color: #424242;
+  color: #e0e0e0;
+  width: 180px;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.react-flow__node:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transform: translateY(-2px);
+}
+
+.react-flow__node.selected {
+  box-shadow: 0 0 0 2px #4caf50;
+}
+
+.react-flow__handle {
+  width: 8px;
+  height: 8px;
+  background-color: #4caf50;
+}
+
+.react-flow__edge-path {
+  stroke: #aaa;
+  stroke-width: 2;
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: #4caf50;
+  stroke-width: 3;
+}
+
+.react-flow__controls {
+  background-color: #333;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.react-flow__controls-button {
+  background-color: #333;
+  border-color: #555;
+  color: #e0e0e0;
+}
+
+.react-flow__controls-button:hover {
+  background-color: #444;
+}
+
+.react-flow__attribution {
+  background-color: rgba(51, 51, 51, 0.8);
+  color: #e0e0e0;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 300px;
+  background-color: #212121;
+  padding: 1rem;
+  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.2);
+  height: 100%;
+  position: absolute;
+  right: -300px;
+  top: 0;
+  transition: right 0.3s ease-in-out;
+  z-index: 100;
+  overflow-y: auto;
+}
+
+.sidebar.open {
+  right: 0;
+}
+
+.sidebar h3 {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid #333;
+  padding-bottom: 0.5rem;
+  text-align: center;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 0.5rem;
+  border-radius: 4px;
+  border: 1px solid #444;
+  background-color: #333;
+  color: #e0e0e0;
+  font-family: inherit;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #4caf50;
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.3);
+}
+
+.form-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+.form-actions button {
+  flex: 1;
+  padding: 0.5rem;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.form-actions button:hover {
+  transform: translateY(-2px);
+}
+
+.save-button {
+  background-color: #4caf50;
+  color: white;
+}
+
+.save-button:hover {
+  background-color: #45a049;
+}
+
+.delete-button {
+  background-color: #f44336;
+  color: white;
+}
+
+.delete-button:hover {
+  background-color: #d32f2f;
+}
+
+.cancel-button {
+  background-color: #757575;
+  color: white;
+}
+
+.cancel-button:hover {
+  background-color: #616161;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal {
+  background-color: #212121;
+  border-radius: 8px;
+  padding: 1.5rem;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.modal h2 {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid #333;
+  padding-bottom: 0.5rem;
+}
+
+/* Loading Overlay */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid rgba(76, 175, 80, 0.3);
+  border-top-color: #4caf50;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Node Types */
+.react-flow__node-default {
+  background-color: #424242;
+  border-color: #555;
+}
+
+.react-flow__node-input {
+  background-color: #1976d2;
+  border-color: #1976d2;
+}
+
+.react-flow__node-output {
+  background-color: #388e3c;
+  border-color: #388e3c;
+}
+
+.react-flow__node-special {
+  background-color: #7b1fa2;
+  border-color: #7b1fa2;
+}
+
+/* Toast Notifications */
+.Toastify__toast {
+  border-radius: 4px;
+  padding: 12px 16px;
+}
+
+.Toastify__toast--success {
+  background-color: #4caf50;
+}
+
+.Toastify__toast--error {
+  background-color: #f44336;
+}
+
+.Toastify__toast--info {
+  background-color: #2196f3;
+}
+
+.Toastify__toast--warning {
+  background-color: #ff9800;
+}
+
+/* Edge Animation */
+.animated-edge {
+  animation: flowAnimation 2s linear infinite;
+}
+
+@keyframes flowAnimation {
+  0% {
+    stroke-dashoffset: 24;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Light Theme Support */
+@media (prefers-color-scheme: light) {
+  .App {
+    background-color: #f5f5f5;
+    color: #333;
+  }
+
+  .App-header {
+    background-color: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .current-project {
+    color: #333;
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+
+  .header-buttons button {
+    background-color: #e0e0e0;
+    color: #333;
+  }
+
+  .header-buttons button:hover {
+    background-color: #d5d5d5;
+  }
+
+  .exit-button {
+    background-color: #f44336 !important;
+    color: white !important;
+  }
+
+  .react-flow {
+    background-color: #f0f0f0;
+  }
+
+  .react-flow__node {
+    background-color: #ffffff;
+    border-color: #ddd;
+    color: #333;
+  }
+
+  .sidebar {
+    background-color: #ffffff;
+    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .sidebar h3 {
+    border-bottom-color: #e0e0e0;
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    border-color: #ddd;
+    background-color: #f9f9f9;
+    color: #333;
+  }
+
+  .modal {
+    background-color: #ffffff;
+  }
+
+  .modal h2 {
+    border-bottom-color: #e0e0e0;
+  }
+
+  .react-flow__node-default {
+    background-color: #ffffff;
+    border-color: #ccc;
+    color: #333;
+  }
 } 

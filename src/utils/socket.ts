@@ -1,8 +1,11 @@
 import { io, Socket } from 'socket.io-client';
-import { Node, Edge } from '../types';
+import { Node, Edge, Project } from '../types';
 
-// Socket connection
-let socket: Socket | null = null;
+const SOCKET_URL = 'http://localhost:3001';
+
+export let socket: Socket | null = null;
+let currentSessionToken: string | null = null;
+let currentProject: Project | null = null;
 
 // Socket event handlers
 type EventHandler<T = any> = (data: T) => void;
@@ -16,72 +19,130 @@ const eventHandlers: Record<string, EventHandler[]> = {
   initialData: [],
   connect: [],
   disconnect: [],
-  error: []
+  error: [],
+  clientsUpdated: [],
+  projectDeleted: []
 };
 
 // Initialize socket connection
-export function initSocket() {
-  if (socket) return socket;
-  
-  // Create new socket connection
-  socket = io('http://localhost:3001');
-  
-  // Set up core event listeners
-  socket.on('connect', () => {
-    console.log('Connected to server');
-    triggerHandlers('connect', null);
-  });
-  
-  socket.on('disconnect', () => {
-    console.log('Disconnected from server');
-    triggerHandlers('disconnect', null);
-  });
-  
-  socket.on('error', (error) => {
-    console.error('Socket error:', error);
-    triggerHandlers('error', error);
-  });
-  
-  // Set up data event listeners
-  socket.on('initialData', (data: { nodes: Node[], edges: Edge[] }) => {
-    console.log('Received initial data');
-    triggerHandlers('initialData', data);
-  });
-  
-  socket.on('nodeUpdated', (node: Node) => {
-    triggerHandlers('nodeUpdated', node);
-  });
-  
-  socket.on('nodeDeleted', (data: { id: string }) => {
-    triggerHandlers('nodeDeleted', data);
-  });
-  
-  socket.on('edgeUpdated', (edge: Edge) => {
-    triggerHandlers('edgeUpdated', edge);
-  });
-  
-  socket.on('edgeDeleted', (data: { id: string }) => {
-    triggerHandlers('edgeDeleted', data);
-  });
-  
-  socket.on('dataImported', (data: { nodes: Node[], edges: Edge[] }) => {
-    triggerHandlers('dataImported', data);
-  });
-  
-  socket.on('dataCleared', () => {
-    triggerHandlers('dataCleared', null);
-  });
+export const initSocket = (): Socket => {
+  if (!socket) {
+    socket = io(SOCKET_URL);
+    
+    // Set up event listeners
+    socket.on('connect', () => {
+      console.log('Socket connected');
+      
+      // Rejoin project if we have a token
+      if (currentSessionToken) {
+        joinProject(currentSessionToken);
+      }
+    });
+    
+    socket.on('disconnect', () => {
+      console.log('Socket disconnected');
+    });
+    
+    socket.on('reconnect', () => {
+      console.log('Socket reconnected');
+      
+      // Rejoin project if we have a token
+      if (currentSessionToken) {
+        joinProject(currentSessionToken);
+      }
+    });
+    
+    socket.on('error', (error) => {
+      console.error('Socket error:', error);
+    });
+    
+    socket.on('projectUpdate', (data) => {
+      console.log('Project update received:', data);
+      // Handle project updates
+    });
+    
+    socket.on('clientsUpdated', (projectId, count) => {
+      console.log(`Project ${projectId} now has ${count} connected clients`);
+    });
+    
+    socket.on('projectDeleted', (projectId) => {
+      console.log(`Project ${projectId} has been deleted`);
+    });
+  }
   
   return socket;
-}
+};
 
-// Disconnect socket
-export function disconnectSocket() {
+// Join a project room with session token
+export const joinProject = (sessionToken: string): void => {
+  if (!socket) {
+    // Initialize socket if not already done
+    initSocket();
+  }
+  
+  if (socket) {
+    currentSessionToken = sessionToken;
+    
+    socket.emit('joinProject', { token: sessionToken }, (response: { success: boolean; project?: Project }) => {
+      if (response.success && response.project) {
+        currentProject = response.project;
+        console.log(`Joined project: ${response.project.name}`);
+      } else {
+        console.error('Failed to join project');
+        currentProject = null;
+      }
+    });
+  }
+};
+
+// Get the current project
+export const getCurrentProject = async (): Promise<Project | null> => {
+  return new Promise((resolve) => {
+    if (!socket || !currentSessionToken) {
+      resolve(null);
+      return;
+    }
+    
+    socket.emit('getCurrentProject', { token: currentSessionToken }, (response: { success: boolean; project?: Project }) => {
+      if (response.success && response.project) {
+        currentProject = response.project;
+        resolve(response.project);
+      } else {
+        currentProject = null;
+        resolve(null);
+      }
+    });
+  });
+};
+
+// Disconnect the socket
+export const disconnect = (): void => {
   if (socket) {
     socket.disconnect();
     socket = null;
+    currentSessionToken = null;
+    currentProject = null;
   }
-}
+};
+
+// Get the current session token
+export const getSessionToken = (): string | null => {
+  return currentSessionToken;
+};
+
+// Add event handlers for socket events
+export const onSocketEvent = (event: string, callback: (...args: any[]) => void): void => {
+  if (socket) {
+    socket.on(event, callback);
+  }
+};
+
+// Remove event handlers for socket events
+export const offSocketEvent = (event: string, callback?: (...args: any[]) => void): void => {
+  if (socket) {
+    socket.off(event, callback);
+  }
+};
 
 // Add event handler
 export function onEvent<T = any>(event: string, handler: EventHandler<T>) {

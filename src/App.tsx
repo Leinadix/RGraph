@@ -1,8 +1,13 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 import GraphView from './components/GraphView';
-import { Node, Edge } from './types';
+import { Node, Edge, Project } from './types';
 import * as api from './utils/api';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { initSocket, socket, joinProject, getCurrentProject } from './utils/socket';
+import { getSessionToken, saveSessionToken, clearSessionToken } from './utils/projectApi';
+import ProjectSelector from './components/ProjectSelector';
 
 // Available icons for nodes
 const AVAILABLE_ICONS = [
@@ -24,6 +29,17 @@ function App() {
   const [syncStatus, setSyncStatus] = useState<string>('Server disconnected');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [serverConnected, setServerConnected] = useState<boolean>(false);
+  const [currentNode, setCurrentNode] = useState<Node | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [importLink, setImportLink] = useState('');
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [lastSyncTimestamp, setLastSyncTimestamp] = useState<number | null>(null);
+  const [selectedOption, setSelectedOption] = useState('');
+  const [newNodeLabel, setNewNodeLabel] = useState('');
+  const [newNodeType, setNewNodeType] = useState('default');
+  const [currentProject, setCurrentProject] = useState<Project | null>(null);
+  const [showProjectSelector, setShowProjectSelector] = useState(false);
+  const lastUpdateRef = useRef<number>(Date.now());
   
   // Form fields for editing
   const [editLabel, setEditLabel] = useState<string>('');
@@ -36,6 +52,75 @@ function App() {
   const editFormRef = useRef<HTMLDivElement>(null);
   const infoRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Initialize socket connection and load project/data
+  useEffect(() => {
+    initSocket();
+    
+    const sessionToken = getSessionToken();
+    if (sessionToken) {
+      joinProject(sessionToken);
+      loadProject(sessionToken);
+    } else {
+      setShowProjectSelector(true);
+    }
+
+    return () => {
+      if (socket) {
+        socket.disconnect();
+      }
+    };
+  }, []);
+
+  const loadProject = async (sessionToken: string) => {
+    try {
+      setIsLoading(true);
+      
+      // Get current project information
+      const project = await getCurrentProject();
+      if (project) {
+        setCurrentProject(project);
+        
+        // Now load nodes and edges for this project
+        const data = await api.getGraphData();
+        setNodes(data.nodes || []);
+        setEdges(data.edges || []);
+        
+        // Get last sync timestamp
+        const timestamp = await api.getLastSyncTimestamp();
+        setLastSyncTimestamp(timestamp);
+      } else {
+        // Invalid session token - show project selector
+        clearSessionToken();
+        setShowProjectSelector(true);
+      }
+    } catch (error) {
+      console.error('Error loading project:', error);
+      toast.error('Error loading project data');
+      clearSessionToken();
+      setShowProjectSelector(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleProjectSelected = (sessionToken: string) => {
+    saveSessionToken(sessionToken);
+    joinProject(sessionToken);
+    loadProject(sessionToken);
+    setShowProjectSelector(false);
+  };
+
+  const handleExitProject = () => {
+    clearSessionToken();
+    setNodes([]);
+    setEdges([]);
+    setCurrentProject(null);
+    setShowProjectSelector(true);
+    if (socket) {
+      socket.disconnect();
+    }
+  };
   
   // Check server connection on load
   useEffect(() => {
@@ -311,14 +396,21 @@ function App() {
         editPanelRef.current.classList.add('exiting');
       }
       
+      // Mark as local update
+      lastUpdateRef.current = Date.now();
+      
       // After the animation delay, update the node
       setTimeout(async () => {
+        // Find the current node to preserve its current properties
+        const currentNode = nodes.find(node => node.id === selectedNode);
+        if (!currentNode) return;
+        
         // Update local state
         setNodes(prevNodes => {
           const updatedNodes = prevNodes.map(node => 
             node.id === selectedNode 
               ? { 
-                  ...node, 
+                  ...node, // Preserve all existing properties
                   label: editLabel,
                   description: editDescription,
                   icon: editIcon
@@ -331,19 +423,16 @@ function App() {
         
         // Save to server if connected
         if (serverConnected) {
-          const updatedNode = nodes.find(node => node.id === selectedNode);
-          if (updatedNode) {
-            try {
-              await api.saveNode({
-                ...updatedNode,
-                label: editLabel,
-                description: editDescription,
-                icon: editIcon
-              });
-            } catch (error) {
-              console.error('Failed to save node changes to server:', error);
-              setSyncStatus('Failed to save changes');
-            }
+          try {
+            await api.saveNode({
+              ...currentNode, // Use the current node with all its properties
+              label: editLabel,
+              description: editDescription,
+              icon: editIcon
+            });
+          } catch (error) {
+            console.error('Failed to save node changes to server:', error);
+            setSyncStatus('Failed to save changes');
           }
         }
         
@@ -489,182 +578,138 @@ function App() {
   };
 
   return (
-    <div className="app">
-      <div className="app-header">
-        <div className="sync-toggle">
-          <label className="sync-label">
-            <span>Database Sync:</span>
-            <div className={`toggle-switch ${syncEnabled ? 'active' : ''}`} onClick={toggleDatabaseSync}>
-              <div className="toggle-slider"></div>
+    <div className="App">
+      <header className="App-header">
+        <div className="logo">GraphApp</div>
+        <div className="header-content">
+          {currentProject && (
+            <div className="current-project">
+              <span>{currentProject.name}</span>
             </div>
-          </label>
-          <div className={`sync-status ${!serverConnected ? 'error' : ''}`}>{syncStatus}</div>
+          )}
+          <div className="header-buttons">
+            {currentProject && (
+              <>
+                <button onClick={() => setShowImportModal(true)}>Import</button>
+                <button onClick={handleExportData}>Export</button>
+                <button onClick={toggleDatabaseSync}>Sync</button>
+                <button onClick={handleExitProject} className="exit-button">Exit Project</button>
+              </>
+            )}
+          </div>
         </div>
-      </div>
-      
-      {isLoading ? (
-        <div className="loading-indicator">Loading graph data...</div>
-      ) : (
-      <div className="controls">
-        <button onClick={() => addNode()}>Add Node</button>
-        {!connectMode && !editMode && !editTransitioning ? (
-          <>
-            <button onClick={() => selectedNode && startConnectMode(selectedNode)} disabled={!selectedNode}>
-              Connect Nodes
-            </button>
-            <button 
-              onClick={handleEditStart} 
-              disabled={!selectedNode}
-              className="edit-button"
-            >
-              Edit Node
-            </button>
-            
-            <div className="separator"></div>
-            
-            <button 
-              onClick={handleExportData}
-              className="export-button"
-              title="Export graph data as JSON"
-            >
-              Export JSON
-            </button>
-            
-            <button 
-              onClick={handleImportClick}
-              className="import-button"
-              title="Import graph data from JSON file"
-            >
-              Import JSON
-            </button>
-            
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              onChange={handleFileImport} 
-              style={{ display: 'none' }} 
-              accept=".json"
-            />
-          </>
-        ) : null}
-        
-        {connectMode && !editTransitioning && (
-          <>
-            <button onClick={cancelConnectMode} className="cancel-button">
-              Cancel Connection
-            </button>
-            <div className="connection-help">
-              Select target node to complete connection
-            </div>
-          </>
-        )}
-        
-        <div 
-          className={`edit-panel ${!editMode ? 'hidden' : ''}`} 
-          ref={editPanelRef}
-        >
-          <div className="edit-form" ref={editFormRef}>
-            <label>
-              Node Name:
-              <input 
-                type="text" 
-                value={editLabel} 
-                onChange={(e) => setEditLabel(e.target.value)}
-                placeholder="Enter node name" 
-              />
-            </label>
-            
-            <label>
-              Description:
-              <textarea 
-                value={editDescription} 
-                onChange={(e) => setEditDescription(e.target.value)}
-                placeholder="Enter node description"
-                rows={3} 
-              />
-            </label>
-            
-            <label>
-              Icon:
-              <div className="icon-selector">
-                {AVAILABLE_ICONS.map(icon => (
-                  <div 
-                    key={icon}
-                    className={`icon-option ${editIcon === icon ? 'selected' : ''}`}
-                    onClick={() => setEditIcon(icon)}
-                  >
-                    {icon}
-                  </div>
-                ))}
+      </header>
+
+      {showProjectSelector && (
+        <ProjectSelector onProjectSelected={handleProjectSelected} />
+      )}
+
+      {!isLoading && currentProject && (
+        <div className="main-content">
+          <GraphView 
+            nodes={nodes} 
+            edges={edges} 
+            selectedNode={selectedNode}
+            sourceNode={sourceNode}
+            connectMode={connectMode}
+            onSelectNode={handleNodeSelect}
+            onAddNode={handleAddNodeAtPosition}
+            onStartConnectMode={startConnectMode}
+            isEditing={editMode}
+          />
+          
+          {/* Sidebar */}
+          <div className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
+            {currentNode ? (
+              <div className="node-details">
+                <h3>Edit Node</h3>
+                <div className="form-group">
+                  <label>Label</label>
+                  <input 
+                    type="text" 
+                    value={currentNode.data.label} 
+                    onChange={(e) => setCurrentNode({
+                      ...currentNode,
+                      data: { ...currentNode.data, label: e.target.value }
+                    })}
+                  />
+                </div>
+                <div className="form-actions">
+                  <button onClick={saveNodeChanges} className="save-button">Save</button>
+                  <button onClick={deleteNode} className="delete-button">Delete</button>
+                  <button onClick={handleEditCancel} className="cancel-button">Cancel</button>
+                </div>
               </div>
-            </label>
-            
-            <div className="edit-buttons">
-              <button onClick={saveNodeChanges} className="save-button">Save</button>
-              <button onClick={handleEditCancel} className="cancel-button">Cancel</button>
-            </div>
+            ) : (
+              <div className="add-node">
+                <h3>Add New Node</h3>
+                <div className="form-group">
+                  <label>Label</label>
+                  <input 
+                    type="text" 
+                    value={newNodeLabel} 
+                    onChange={(e) => setNewNodeLabel(e.target.value)}
+                    placeholder="Enter node label"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Type</label>
+                  <select 
+                    value={newNodeType}
+                    onChange={(e) => setNewNodeType(e.target.value)}
+                  >
+                    <option value="default">Default</option>
+                    <option value="input">Input</option>
+                    <option value="output">Output</option>
+                    <option value="special">Special</option>
+                  </select>
+                </div>
+                <div className="form-actions">
+                  <button onClick={() => {
+                    addNode(Math.random() * 800, Math.random() * 600);
+                    setIsSidebarOpen(false);
+                  }} disabled={!newNodeLabel.trim()}>Add Node</button>
+                  <button onClick={() => setIsSidebarOpen(false)}>Cancel</button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
-        
-        {!connectMode && !editMode && !editTransitioning && (
-          <button 
-            onClick={() => selectedNode && deleteNode(selectedNode)} 
-            disabled={!selectedNode}
-            className="delete-button"
-          >
-            Delete Node
-          </button>
-        )}
-        
-        {importError && !editMode && !connectMode && (
-          <div className="import-error">
-            {importError}
-            <button 
-              className="close-error-button" 
-              onClick={() => setImportError(null)}
-              title="Dismiss error"
-            >
-              ✕
-            </button>
-          </div>
-        )}
-      </div>
       )}
       
-      <div className="main-content">
-        <GraphView 
-          nodes={nodes}
-          edges={edges}
-          selectedNode={selectedNode}
-          sourceNode={sourceNode}
-          connectMode={connectMode}
-          onSelectNode={handleNodeSelect}
-          onAddNode={handleAddNodeAtPosition}
-          onStartConnectMode={startConnectMode}
-          isEditing={editMode}
-        />
-        
-        <div 
-          className={`node-info ${!selectedNode || editMode ? 'hidden' : ''}`}
-          ref={infoRef}
-        >
-          {selectedNode && (
-            <>
-              {(() => {
-                const node = nodes.find(n => n.id === selectedNode);
-                return node ? (
-                  <div>
-                    <h3>{node.label}</h3>
-                    {node.description && (
-                      <div className="node-description">{node.description}</div>
-                    )}
-                  </div>
-                ) : null;
-              })()}
-            </>
-          )}
+      {/* Import Modal */}
+      {showImportModal && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <h2>Import Graph</h2>
+            <div className="form-group">
+              <label>URL or JSON data</label>
+              <textarea 
+                value={importLink} 
+                onChange={(e) => setImportLink(e.target.value)}
+                placeholder="Paste URL or JSON data"
+                rows={5}
+              />
+            </div>
+            <div className="form-actions">
+              <button onClick={handleFileImport}>Import</button>
+              <button onClick={() => {
+                setShowImportModal(false);
+                setImportLink('');
+              }}>Cancel</button>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
+
+      {isLoading && (
+        <div className="loading-overlay">
+          <div className="loading-spinner"></div>
+          <p>{syncStatus}</p>
+        </div>
+      )}
+
+      <ToastContainer position="bottom-right" />
     </div>
   );
 }

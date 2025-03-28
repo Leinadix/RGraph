@@ -1,31 +1,94 @@
-# Graph App
+# GraphApp
 
-A React application for creating and managing nodes and edges in a graph view, with server-side database persistence.
+A collaborative graph visualization and editing application that allows users to create, edit, and share graph structures with nodes and edges.
 
 ## Features
 
-- Create, edit, and delete nodes
-- Connect nodes with edges
-- Export and import graph data as JSON
-- Server-side database persistence with SQLite
-- Real-time synchronization with the server
+- Create and manage multiple projects
+- Real-time collaboration with other users
+- Create, edit, and delete nodes and edges
+- Import and export graph data as JSON
+- Project sharing via session tokens
+- Responsive and modern UI
 
-## Setup
+## Technology Stack
 
-1. Install dependencies:
-```bash
+- **Frontend**: React, TypeScript, React Flow, React Toastify
+- **Backend**: Node.js, Express, Socket.IO
+- **Database**: SQLite
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js (v14 or later)
+- npm (v6 or later)
+
+### Installation
+
+1. Clone the repository:
+```
+git clone <repository-url>
+cd GraphApp
+```
+
+2. Install dependencies:
+```
 npm install
 ```
 
-2. Start the development server:
-```bash
+### Running the Application
+
+You can start both the server and client with a single command:
+
+```
+npm start
+```
+
+Or run them separately:
+
+- Start the server:
+```
+npm run server
+```
+
+- Start the client:
+```
 npm run dev
 ```
 
-3. Start the API server (in a separate terminal):
-```bash
-npm run server
-```
+The application will be available at http://localhost:5173, and the server will run on http://localhost:3001.
+
+## Usage
+
+### Creating a New Project
+
+1. When you first open the application, you'll be presented with a project selection screen.
+2. Click "Create New Project" to create a new graph project.
+3. Enter a name and optional description for your project.
+
+### Sharing a Project
+
+1. In the project selection screen, click the "Share" button next to a project.
+2. Copy the generated session token.
+3. Share this token with others who want to collaborate on the same project.
+4. They can join by pasting the token in the "Join with Token" field.
+
+### Working with Nodes and Edges
+
+- **Adding a Node**: Click the "Add Node" button in the sidebar or press the "+" icon in the graph view.
+- **Editing a Node**: Click on a node to select it, then modify its properties in the sidebar.
+- **Connecting Nodes**: Drag from the handle of one node to another to create an edge.
+- **Deleting**: Select a node or edge and press the "Delete" button in the sidebar.
+
+### Importing and Exporting
+
+- **Export**: Click the "Export" button in the header to download the current graph as JSON.
+- **Import**: Click the "Import" button and paste a URL or JSON data.
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## Architecture
 

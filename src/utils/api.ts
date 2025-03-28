@@ -1,4 +1,5 @@
 import { Node, Edge } from '../types';
+import { getSessionToken } from './projectApi';
 
 const API_URL = 'http://localhost:3001/api';
 
@@ -7,6 +8,20 @@ interface ApiResponse<T = any> {
   error?: string;
   [key: string]: any;
 }
+
+// Helper function to get auth headers with session token
+const getAuthHeaders = () => {
+  const sessionToken = getSessionToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json'
+  };
+  
+  if (sessionToken) {
+    headers['Authorization'] = `Bearer ${sessionToken}`;
+  }
+  
+  return headers;
+};
 
 // Helper function to handle API errors
 async function handleResponse<T>(response: Response): Promise<T> {
@@ -17,137 +32,236 @@ async function handleResponse<T>(response: Response): Promise<T> {
   return response.json();
 }
 
-// Get all nodes
-export async function getNodes(): Promise<Node[]> {
-  const response = await fetch(`${API_URL}/nodes`);
-  const data = await handleResponse<{ nodes: Node[] }>(response);
-  return data.nodes || [];
-}
-
-// Get all edges
-export async function getEdges(): Promise<Edge[]> {
-  const response = await fetch(`${API_URL}/edges`);
-  const data = await handleResponse<{ edges: Edge[] }>(response);
-  return data.edges || [];
-}
-
-// Get all graph data (nodes and edges)
-export async function getGraphData(): Promise<{ nodes: Node[], edges: Edge[] }> {
-  const response = await fetch(`${API_URL}/graph`);
-  const data = await handleResponse<{ nodes: Node[], edges: Edge[] }>(response);
-  return {
-    nodes: data.nodes || [],
-    edges: data.edges || []
-  };
-}
-
-// Save a node
-export async function saveNode(node: Node): Promise<ApiResponse> {
-  const method = node.id ? 'PUT' : 'POST';
-  const url = node.id ? `${API_URL}/nodes/${node.id}` : `${API_URL}/nodes`;
-  
-  const response = await fetch(url, {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(node),
-  });
-  
-  return handleResponse<ApiResponse>(response);
-}
-
-// Delete a node
-export async function deleteNode(nodeId: string): Promise<ApiResponse> {
-  const response = await fetch(`${API_URL}/nodes/${nodeId}`, {
-    method: 'DELETE',
-  });
-  
-  return handleResponse<ApiResponse>(response);
-}
-
-// Save an edge
-export async function saveEdge(edge: Edge): Promise<ApiResponse> {
-  const method = edge.id ? 'PUT' : 'POST';
-  const url = edge.id ? `${API_URL}/edges/${edge.id}` : `${API_URL}/edges`;
-  
-  const response = await fetch(url, {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(edge),
-  });
-  
-  return handleResponse<ApiResponse>(response);
-}
-
-// Delete an edge
-export async function deleteEdge(edgeId: string): Promise<ApiResponse> {
-  const response = await fetch(`${API_URL}/edges/${edgeId}`, {
-    method: 'DELETE',
-  });
-  
-  return handleResponse<ApiResponse>(response);
-}
-
-// Get changes since timestamp
-export async function getChangesSince(timestamp: number): Promise<{
-  nodes: Node[];
-  edges: Edge[];
-  timestamp: number;
-}> {
-  const response = await fetch(`${API_URL}/changes/${timestamp}`);
-  const data = await handleResponse<{
-    nodes: Node[];
-    edges: Edge[];
-    timestamp: number;
-  }>(response);
-  
-  return {
-    nodes: data.nodes || [],
-    edges: data.edges || [],
-    timestamp: data.timestamp || Date.now()
-  };
-}
-
-// Get last sync timestamp
-export async function getLastSyncTimestamp(): Promise<number> {
-  const response = await fetch(`${API_URL}/sync/timestamp`);
-  const data = await handleResponse<{ timestamp: number }>(response);
-  return data.timestamp || 0;
-}
-
-// Import data
-export async function importData(data: { nodes: Node[], edges: Edge[] }): Promise<ApiResponse> {
-  const response = await fetch(`${API_URL}/import`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(data),
-  });
-  
-  return handleResponse<ApiResponse>(response);
-}
-
-// Clear all data
-export async function clearDatabase(): Promise<ApiResponse> {
-  const response = await fetch(`${API_URL}/clear`, {
-    method: 'POST',
-  });
-  
-  return handleResponse<ApiResponse>(response);
-}
-
-// Check server status
-export async function checkServerStatus(): Promise<boolean> {
+// Get all nodes from the database
+export const getNodes = async (): Promise<Node[]> => {
   try {
-    const response = await fetch(`${API_URL}/status`);
-    const data = await handleResponse<{ status: string }>(response);
-    return data.status === 'ok';
+    const response = await fetch(`${API_URL}/nodes`, {
+      headers: getAuthHeaders()
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Error fetching nodes: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data.nodes || [];
   } catch (error) {
-    console.error('Server status check failed:', error);
+    console.error('Error getting nodes:', error);
+    return [];
+  }
+};
+
+// Get all edges from the database
+export const getEdges = async (): Promise<Edge[]> => {
+  try {
+    const response = await fetch(`${API_URL}/edges`, {
+      headers: getAuthHeaders()
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Error fetching edges: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data.edges || [];
+  } catch (error) {
+    console.error('Error getting edges:', error);
+    return [];
+  }
+};
+
+// Get both nodes and edges in a single request
+export const getGraphData = async (): Promise<{ nodes: Node[], edges: Edge[] }> => {
+  try {
+    const response = await fetch(`${API_URL}/graph`, {
+      headers: getAuthHeaders()
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Error fetching graph data: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return {
+      nodes: data.nodes || [],
+      edges: data.edges || []
+    };
+  } catch (error) {
+    console.error('Error getting graph data:', error);
+    return { nodes: [], edges: [] };
+  }
+};
+
+// Save a node to the database
+export const saveNode = async (node: Node): Promise<boolean> => {
+  try {
+    const response = await fetch(`${API_URL}/nodes/${node.id}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(node)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Error saving node: ${response.status}`);
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error saving node:', error);
     return false;
   }
-} 
+};
+
+// Delete a node from the database
+export const deleteNode = async (nodeId: string): Promise<boolean> => {
+  try {
+    const response = await fetch(`${API_URL}/nodes/${nodeId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Error deleting node: ${response.status}`);
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error deleting node:', error);
+    return false;
+  }
+};
+
+// Save an edge to the database
+export const saveEdge = async (edge: Edge): Promise<boolean> => {
+  try {
+    const response = await fetch(`${API_URL}/edges/${edge.id}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(edge)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Error saving edge: ${response.status}`);
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error saving edge:', error);
+    return false;
+  }
+};
+
+// Delete an edge from the database
+export const deleteEdge = async (edgeId: string): Promise<boolean> => {
+  try {
+    const response = await fetch(`${API_URL}/edges/${edgeId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Error deleting edge: ${response.status}`);
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error deleting edge:', error);
+    return false;
+  }
+};
+
+// Get changes since a specific timestamp
+export const getChangesSince = async (timestamp: number): Promise<{ nodes: Node[], edges: Edge[], deletedNodes: string[], deletedEdges: string[] }> => {
+  try {
+    const response = await fetch(`${API_URL}/changes?since=${timestamp}`, {
+      headers: getAuthHeaders()
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Error fetching changes: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return {
+      nodes: data.nodes || [],
+      edges: data.edges || [],
+      deletedNodes: data.deletedNodes || [],
+      deletedEdges: data.deletedEdges || []
+    };
+  } catch (error) {
+    console.error('Error getting changes:', error);
+    return { nodes: [], edges: [], deletedNodes: [], deletedEdges: [] };
+  }
+};
+
+// Get the last sync timestamp
+export const getLastSyncTimestamp = async (): Promise<number | null> => {
+  try {
+    const response = await fetch(`${API_URL}/sync/timestamp`, {
+      headers: getAuthHeaders()
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Error fetching timestamp: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data.timestamp || null;
+  } catch (error) {
+    console.error('Error getting timestamp:', error);
+    return null;
+  }
+};
+
+// Import data from JSON
+export const importData = async (data: { nodes: Node[], edges: Edge[] }): Promise<boolean> => {
+  try {
+    const response = await fetch(`${API_URL}/import`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Error importing data: ${response.status}`);
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error importing data:', error);
+    return false;
+  }
+};
+
+// Clear the database
+export const clearDatabase = async (): Promise<boolean> => {
+  try {
+    const response = await fetch(`${API_URL}/clear`, {
+      method: 'POST',
+      headers: getAuthHeaders()
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Error clearing database: ${response.status}`);
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error clearing database:', error);
+    return false;
+  }
+};
+
+// Check server status
+export const checkServerStatus = async (): Promise<boolean> => {
+  try {
+    const response = await fetch(`${API_URL}/status`, {
+      headers: getAuthHeaders()
+    });
+    
+    return response.ok;
+  } catch (error) {
+    console.error('Error checking server status:', error);
+    return false;
+  }
+}; 

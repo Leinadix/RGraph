@@ -1,0 +1,429 @@
+/* Ensure the entire application fits the viewport exactly */
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+.app {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+  gap: 1rem;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.controls {
+  display: flex;
+  gap: 0.8rem;
+  padding: 0.8rem;
+  background-color: #1a1a1a;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  align-items: center;
+  flex-wrap: wrap;
+  transition: height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+  overflow: hidden;
+}
+
+.controls button {
+  padding: 0.5em 1em;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-size: 0.95em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  color: #ffffff;
+  cursor: pointer;
+  transition: border-color 0.25s, background-color 0.25s, opacity 0.3s, transform 0.3s;
+}
+
+.controls button:hover {
+  border-color: #646cff;
+  transform: translateY(-2px);
+}
+
+.controls button:active {
+  transform: translateY(1px);
+}
+
+.controls button:focus,
+.controls button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+
+.controls button:disabled {
+  color: #666;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.edit-button {
+  background-color: #4caf50 !important;
+}
+
+.edit-button:hover {
+  background-color: #45a049 !important;
+}
+
+.save-button {
+  background-color: #4caf50 !important;
+}
+
+.save-button:hover {
+  background-color: #45a049 !important;
+}
+
+.delete-button {
+  background-color: #f44336 !important;
+}
+
+.delete-button:hover {
+  background-color: #d32f2f !important;
+}
+
+.cancel-button {
+  background-color: #ff5252 !important;
+  color: white !important;
+}
+
+.cancel-button:hover {
+  background-color: #ff1744 !important;
+  border-color: #ff1744 !important;
+}
+
+.connection-help {
+  padding: 0.5rem 1rem;
+  background-color: #2d2d2d;
+  border-radius: 8px;
+  color: #8bc34a;
+  font-weight: 500;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.7;
+  }
+}
+
+/* Modify the main content area to handle overflow properly */
+.main-content {
+  display: flex;
+  flex: 1;
+  gap: 1rem;
+  transition: all 0.3s ease-in-out;
+  min-height: 0; /* Critical for proper flex sizing */
+  overflow: hidden;
+}
+
+.graph-container {
+  flex: 3;
+  background-color: #1a1a1a;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  position: relative;
+  transition: flex 0.5s ease-in-out;
+  min-height: 0; /* Critical for proper flex sizing */
+}
+
+.node-info-panel {
+  flex: 1;
+  background-color: #1a1a1a;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  max-height: 100%;
+  opacity: 1;
+  transform: translateX(0);
+  transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  width: 300px;
+  min-width: 300px;
+  margin-left: 0;
+  max-width: 25%; /* Ensure it doesn't take too much space */
+}
+
+.node-info-panel.hidden {
+  opacity: 0;
+  transform: translateX(50px);
+  width: 0;
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+}
+
+.node-info-panel.entering {
+  opacity: 0;
+  transform: translateX(50px);
+}
+
+.node-info-panel h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #fff;
+  border-bottom: 1px solid #333;
+  padding-bottom: 0.5rem;
+  white-space: nowrap;
+}
+
+.node-description {
+  white-space: pre-wrap;
+  color: #ddd;
+  line-height: 1.5;
+}
+
+.edit-panel {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  margin-top: 0.5rem;
+  transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  opacity: 1;
+  transform: translateY(0);
+  max-height: 500px;
+  overflow: hidden;
+}
+
+.edit-panel.hidden {
+  opacity: 0;
+  transform: translateY(-50px);
+  max-height: 0;
+  padding: 0;
+  margin: 0;
+  pointer-events: none;
+}
+
+.edit-panel.entering {
+  opacity: 0;
+  transform: translateY(-50px);
+  max-height: 0;
+}
+
+.edit-panel.exiting {
+  opacity: 0;
+  transform: translateY(-50px);
+  max-height: 0;
+}
+
+.edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  background-color: #2d2d2d;
+  padding: 1rem;
+  border-radius: 8px;
+  width: 100%;
+  transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transform: translateY(0);
+  opacity: 1;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.edit-form.entering {
+  opacity: 0;
+  transform: translateY(-30px);
+}
+
+.edit-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  color: #eee;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.edit-form input, 
+.edit-form textarea {
+  background-color: #1a1a1a;
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 0.5rem;
+  color: #fff;
+  font-family: inherit;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.edit-form input:focus, 
+.edit-form textarea:focus {
+  outline: none;
+  border-color: #646cff;
+  box-shadow: 0 0 0 2px rgba(100, 108, 255, 0.3);
+}
+
+.edit-form textarea {
+  resize: vertical;
+  min-height: 60px;
+  max-height: 150px;
+}
+
+.edit-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+.icon-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+  max-height: 170px;
+  overflow-y: auto;
+  align-content: flex-start;
+  padding-right: 0.3rem;
+}
+
+.icon-option {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #1a1a1a;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.2s ease-in-out, transform 0.2s ease-in-out;
+}
+
+.icon-option:hover {
+  background-color: #333;
+  transform: scale(1.1);
+}
+
+.icon-option.selected {
+  background-color: #4285f4;
+  color: white;
+  transform: scale(1.1);
+}
+
+.graph-view {
+  width: 100%;
+  height: 100%;
+}
+
+.node-icon {
+  user-select: none;
+  pointer-events: none;
+}
+
+.node-label {
+  user-select: none;
+  pointer-events: none;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.tooltip text {
+  opacity: 0.6;
+  transition: opacity 0.3s;
+}
+
+.tooltip text:hover {
+  opacity: 1;
+}
+
+.zoom-controls {
+  opacity: 0.7;
+  transition: opacity 0.3s;
+  transform: scale(0.8);
+  transform-origin: top right;
+}
+
+.zoom-controls:hover {
+  opacity: 1;
+}
+
+/* Animation classes for node editing transitions */
+.fade-enter {
+  opacity: 0;
+}
+
+.fade-enter-active {
+  opacity: 1;
+  transition: opacity 300ms;
+}
+
+.fade-exit {
+  opacity: 1;
+}
+
+.fade-exit-active {
+  opacity: 0;
+  transition: opacity 300ms;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+  
+  .controls, .graph-container, .node-info-panel {
+    background-color: #f9f9f9;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  .controls button {
+    background-color: #f9f9f9;
+    color: #213547;
+  }
+  
+  .connection-help {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+  }
+  
+  .edit-form {
+    background-color: #e8e8e8;
+  }
+  
+  .edit-form label {
+    color: #333;
+  }
+  
+  .edit-form input, 
+  .edit-form textarea {
+    background-color: #ffffff;
+    border-color: #ccc;
+    color: #333;
+  }
+  
+  .icon-option {
+    background-color: #e0e0e0;
+    color: #333;
+  }
+  
+  .node-info-panel h3 {
+    color: #333;
+    border-bottom-color: #ccc;
+  }
+  
+  .node-description {
+    color: #555;
+  }
+  
+  .tooltip text {
+    fill: #555;
+  }
+} 

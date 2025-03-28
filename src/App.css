@@ -124,9 +124,10 @@ html, body {
   display: flex;
   flex: 1;
   gap: 1rem;
-  transition: all 0.3s ease-in-out;
+  transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   min-height: 0; /* Critical for proper flex sizing */
   overflow: hidden;
+  position: relative;
 }
 
 .graph-container {
@@ -136,12 +137,21 @@ html, body {
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   position: relative;
-  transition: flex 0.5s ease-in-out;
+  transition: flex 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  will-change: flex-grow;
   min-height: 0; /* Critical for proper flex sizing */
 }
 
+.graph-container.with-panel {
+  flex: 3;
+}
+
+.graph-container.full-width {
+  flex: 4;
+}
+
 .node-info-panel {
-  flex: 1;
+  flex: 0;
   background-color: #1a1a1a;
   border-radius: 8px;
   padding: 1rem;
@@ -153,6 +163,7 @@ html, body {
   opacity: 1;
   transform: translateX(0);
   transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  will-change: transform, opacity, width, flex;
   width: 300px;
   min-width: 300px;
   margin-left: 0;
@@ -167,6 +178,7 @@ html, body {
   padding: 0;
   margin: 0;
   overflow: hidden;
+  flex: 0;
 }
 
 .node-info-panel.entering {
@@ -195,6 +207,7 @@ html, body {
   width: 100%;
   margin-top: 0.5rem;
   transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  will-change: transform, opacity, max-height;
   opacity: 1;
   transform: translateY(0);
   max-height: 500px;
@@ -231,6 +244,7 @@ html, body {
   border-radius: 8px;
   width: 100%;
   transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  will-change: transform, opacity;
   transform: translateY(0);
   opacity: 1;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
@@ -346,8 +360,6 @@ html, body {
 .zoom-controls {
   opacity: 0.7;
   transition: opacity 0.3s;
-  transform: scale(0.8);
-  transform-origin: top right;
 }
 
 .zoom-controls:hover {

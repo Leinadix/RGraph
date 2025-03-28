@@ -60,12 +60,16 @@ const GraphView = ({
     width: number,
     height: number,
     padding: number = 50,
-    transitionDuration: number = 750
+    transitionDuration: number = 750,
+    forceUpdate: boolean = false
   ) => {
     if (!zoomRef.current) return;
     
     // Skip fitting if we're in edit mode - we'll do it when editing completes
     if (isEditing) return;
+    
+    // Skip auto-fitting on layout changes from node selection unless forced
+    if (!forceUpdate && nodes.length > 1) return;
 
     // If there are no nodes, don't try to fit
     if (nodes.length === 0) return;
@@ -136,11 +140,12 @@ const GraphView = ({
     // Clear the SVG
     d3.select(svgRef.current).selectAll('*').remove();
 
-    // Setup the SVG container
+    // Setup the SVG container with smooth transitions
     const svg = d3.select(svgRef.current)
       .attr('width', '100%')
       .attr('height', '100%')
-      .attr('viewBox', `0 0 ${width} ${height}`);
+      .attr('viewBox', `0 0 ${width} ${height}`)
+      .style('transition', 'all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)');
 
     // Create zoom behavior with smoother transitions
     const zoom = d3.zoom<SVGSVGElement, unknown>()
@@ -158,7 +163,8 @@ const GraphView = ({
 
     // Create a group for the graph that will be transformed by zoom
     const graph = svg.append('g')
-      .attr('class', 'graph');
+      .attr('class', 'graph')
+      .style('transition', 'transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)');
     
     // Store reference to graph for later use
     graphRef.current = graph;
@@ -191,7 +197,7 @@ const GraphView = ({
         // When simulation ends, fit the graph to the viewport
         // Only do this if we're not in edit mode
         if (!isEditing) {
-          fitGraphToViewport(svg, graph, node, width, height);
+          fitGraphToViewport(svg, graph, node, width, height, 50, 750, false);
         }
       });
     
@@ -320,8 +326,8 @@ const GraphView = ({
     // Add manual zoom controls
     const zoomControls = svg.append('g')
       .attr('class', 'zoom-controls')
-      .attr('transform', `translate(${width - 70}, 30)`);
-    
+      .attr('transform', `translate(${width - 50}, 30)`);
+
     // Zoom in button
     zoomControls.append('circle')
       .attr('r', 15)
@@ -338,7 +344,7 @@ const GraphView = ({
           .ease(d3.easeQuadOut)
           .call(zoom.scaleBy, 1.3);
       });
-    
+
     zoomControls.append('text')
       .attr('x', 0)
       .attr('y', 5)
@@ -346,7 +352,7 @@ const GraphView = ({
       .attr('fill', '#fff')
       .attr('pointer-events', 'none')
       .text('+');
-    
+
     // Zoom out button
     zoomControls.append('circle')
       .attr('r', 15)
@@ -363,7 +369,7 @@ const GraphView = ({
           .ease(d3.easeQuadOut)
           .call(zoom.scaleBy, 0.7);
       });
-    
+
     zoomControls.append('text')
       .attr('x', 0)
       .attr('y', 45)
@@ -371,7 +377,7 @@ const GraphView = ({
       .attr('fill', '#fff')
       .attr('pointer-events', 'none')
       .text('-');
-    
+
     // Reset zoom/fit all button
     zoomControls.append('circle')
       .attr('r', 15)
@@ -383,9 +389,9 @@ const GraphView = ({
       .attr('cursor', 'pointer')
       .on('click', (event) => {
         event.stopPropagation();
-        fitGraphToViewport(svg, graph, node, width, height, 50, 500);
+        fitGraphToViewport(svg, graph, node, width, height, 50, 500, true);
       });
-    
+
     zoomControls.append('text')
       .attr('x', 0)
       .attr('y', 85)
@@ -436,15 +442,15 @@ const GraphView = ({
       
       // After dragging ends, refit the graph if significantly changed and not in edit mode
       if (!isEditing) {
-        setTimeout(() => fitGraphToViewport(svg, graph, node, width, height, 50, 500), 300);
+        setTimeout(() => fitGraphToViewport(svg, graph, node, width, height, 50, 500, true), 300);
       }
     }
 
-    // Initial fit if we have nodes and aren't in edit mode
-    if (nodes.length > 0 && !isEditing) {
+    // Initial fit if we have nodes and aren't in edit mode, but use a force flag
+    if (nodes.length > 0) {
       // Slight delay to allow nodes to initialize positions
       setTimeout(() => {
-        fitGraphToViewport(svg, graph, node, width, height);
+        fitGraphToViewport(svg, graph, node, width, height, 50, isEditing ? 0 : 750, true);
       }, 100);
     }
 

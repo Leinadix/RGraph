@@ -160,16 +160,33 @@ function App() {
     }
   };
 
-  const startEditMode = () => {
-    if (selectedNode) {
-      const node = nodes.find(n => n.id === selectedNode);
-      if (node) {
-        setEditLabel(node.label);
-        setEditDescription(node.description || '');
-        setEditIcon(node.icon || 'circle');
+  const handleEditStart = () => {
+    if (!selectedNode) return;
+    
+    const selectedNodeData = nodes.find((n) => n.id === selectedNode);
+    
+    if (selectedNodeData) {
+      // Set transitioning first
+      setEditTransitioning(true);
+      
+      // Add a small delay to allow the animation to start properly
+      setTimeout(() => {
+        setEditLabel(selectedNodeData.label);
+        setEditDescription(selectedNodeData.description || '');
+        setEditIcon(selectedNodeData.icon || 'circle');
         setEditMode(true);
-      }
+      }, 50);
     }
+  };
+
+  const handleEditCancel = () => {
+    // Set transitioning state first
+    setEditTransitioning(true);
+    
+    // Add a small delay before changing mode to allow animations to work smoothly
+    setTimeout(() => {
+      setEditMode(false);
+    }, 50);
   };
 
   const saveNodeChanges = () => {
@@ -192,20 +209,8 @@ function App() {
             : node
         ));
         setEditMode(false);
-      }, 500);
+      }, 50);
     }
-  };
-
-  const cancelEditMode = () => {
-    // Create a temporary exiting class for animation
-    if (editPanelRef.current) {
-      editPanelRef.current.classList.add('exiting');
-    }
-    
-    // After the animation delay, reset edit mode
-    setTimeout(() => {
-      setEditMode(false);
-    }, 500);
   };
 
   // Handler for creating a node at cursor position
@@ -223,7 +228,7 @@ function App() {
               Connect Nodes
             </button>
             <button 
-              onClick={startEditMode} 
+              onClick={handleEditStart} 
               disabled={!selectedNode}
               className="edit-button"
             >
@@ -285,7 +290,7 @@ function App() {
             
             <div className="edit-buttons">
               <button onClick={saveNodeChanges} className="save-button">Save</button>
-              <button onClick={cancelEditMode} className="cancel-button">Cancel</button>
+              <button onClick={handleEditCancel} className="cancel-button">Cancel</button>
             </div>
           </div>
         </div>
@@ -302,7 +307,7 @@ function App() {
       </div>
       
       <div className="main-content">
-        <div className="graph-container">
+        <div className={`graph-container ${editMode || (selectedNode && !editMode && !editTransitioning) ? 'with-panel' : 'full-width'}`}>
           <GraphView 
             nodes={nodes} 
             edges={edges} 

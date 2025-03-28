@@ -98,6 +98,55 @@ html, body {
   border-color: #ff1744 !important;
 }
 
+.export-button {
+  background-color: #4caf50 !important;
+}
+
+.export-button:hover {
+  background-color: #43a047 !important;
+}
+
+.import-button {
+  background-color: #2196f3 !important;
+}
+
+.import-button:hover {
+  background-color: #1e88e5 !important;
+}
+
+.separator {
+  width: 1px;
+  height: 24px;
+  background-color: #444;
+  margin: 0 0.5rem;
+}
+
+.import-error {
+  background-color: #f44336;
+  color: white;
+  padding: 0.6rem 1rem;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  animation: slideIn 0.5s ease-out;
+  max-width: 600px;
+}
+
+.close-error-button {
+  background: none !important;
+  border: none !important;
+  color: white !important;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0.2rem;
+  margin-left: auto;
+}
+
+.close-error-button:hover {
+  opacity: 0.8;
+}
+
 .connection-help {
   padding: 0.5rem 1rem;
   background-color: #2d2d2d;
@@ -383,6 +432,17 @@ html, body {
 .fade-exit-active {
   opacity: 0;
   transition: opacity 300ms;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 @media (prefers-color-scheme: light) {

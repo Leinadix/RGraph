@@ -18,6 +18,7 @@ function App() {
   const [sourceNode, setSourceNode] = useState<string | null>(null);
   const [editMode, setEditMode] = useState<boolean>(false);
   const [editTransitioning, setEditTransitioning] = useState<boolean>(false);
+  const [importError, setImportError] = useState<string | null>(null);
   
   // Form fields for editing
   const [editLabel, setEditLabel] = useState<string>('');
@@ -29,6 +30,7 @@ function App() {
   const editPanelRef = useRef<HTMLDivElement>(null);
   const editFormRef = useRef<HTMLDivElement>(null);
   const infoRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Handle transitions when edit mode changes
   useEffect(() => {
@@ -218,6 +220,108 @@ function App() {
     addNode(x, y);
   };
 
+  // Export graph data as JSON file
+  const handleExportData = () => {
+    // Create an object with the current graph data
+    const graphData = {
+      nodes,
+      edges
+    };
+    
+    // Convert to JSON string
+    const jsonString = JSON.stringify(graphData, null, 2);
+    
+    // Create a Blob for the file
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    
+    // Create a download link
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    
+    // Set the filename with timestamp
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    link.download = `graph-data-${timestamp}.json`;
+    
+    // Trigger download
+    document.body.appendChild(link);
+    link.click();
+    
+    // Clean up
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // Trigger file input click for import
+  const handleImportClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  // Handle the file selection and import data
+  const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    setImportError(null);
+    
+    if (!file) return;
+    
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string;
+        const parsedData = JSON.parse(content);
+        
+        // Validate the imported data structure
+        if (!parsedData.nodes || !Array.isArray(parsedData.nodes) || 
+            !parsedData.edges || !Array.isArray(parsedData.edges)) {
+          setImportError('Invalid JSON format: Missing nodes or edges arrays');
+          return;
+        }
+        
+        // Check if nodes have required properties
+        const validNodes = parsedData.nodes.every((node: any) => 
+          node.id && node.label && 
+          typeof node.x === 'number' && 
+          typeof node.y === 'number'
+        );
+        
+        if (!validNodes) {
+          setImportError('Invalid node data: Nodes must have id, label, x, and y properties');
+          return;
+        }
+        
+        // Check if edges have required properties
+        const validEdges = parsedData.edges.every((edge: any) => 
+          edge.id && edge.source && edge.target
+        );
+        
+        if (!validEdges) {
+          setImportError('Invalid edge data: Edges must have id, source, and target properties');
+          return;
+        }
+        
+        // Set the imported data
+        setNodes(parsedData.nodes);
+        setEdges(parsedData.edges);
+        
+        // Deselect any selected node
+        setSelectedNode(null);
+        setEditMode(false);
+        
+        // Reset file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      } catch (error) {
+        setImportError(`Error parsing JSON: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    };
+    
+    reader.readAsText(file);
+  };
+
   return (
     <div className="app">
       <div className="controls">
@@ -234,6 +338,32 @@ function App() {
             >
               Edit Node
             </button>
+            
+            <div className="separator"></div>
+            
+            <button 
+              onClick={handleExportData}
+              className="export-button"
+              title="Export graph data as JSON"
+            >
+              Export JSON
+            </button>
+            
+            <button 
+              onClick={handleImportClick}
+              className="import-button"
+              title="Import graph data from JSON file"
+            >
+              Import JSON
+            </button>
+            
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              onChange={handleFileImport} 
+              style={{ display: 'none' }} 
+              accept=".json"
+            />
           </>
         ) : null}
         
@@ -303,6 +433,19 @@ function App() {
           >
             Delete Node
           </button>
+        )}
+        
+        {importError && !editMode && !connectMode && (
+          <div className="import-error">
+            {importError}
+            <button 
+              className="close-error-button" 
+              onClick={() => setImportError(null)}
+              title="Dismiss error"
+            >
+              ✕
+            </button>
+          </div>
         )}
       </div>
       

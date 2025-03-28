@@ -12,6 +12,7 @@ An interactive graph/node editor inspired by Obsidian's graph view. This applica
 - Visual representation of the graph structure
 - Zoom controls for better graph navigation
 - Right-click functionality for creating nodes and connections
+- Import and export graph data in JSON format
 - Elegant user interface with dark and light mode support
 
 ## Getting Started
@@ -62,6 +63,9 @@ npm run build
   2. Click "Edit Node" button
   3. Update the node's name, description, and icon
   4. Click "Save" to apply changes or "Cancel" to discard
+- Saving and loading your graph:
+  - Click "Export JSON" to save your current graph data
+  - Click "Import JSON" to load a previously saved graph
 - Delete a selected node with the "Delete Node" button
 - Drag nodes to rearrange the graph layout
 - Use the zoom controls in the top-right corner:

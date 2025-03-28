@@ -51,12 +51,12 @@ function App() {
           if (editFormRef.current) {
             editFormRef.current.classList.remove('entering');
           }
-        }, 50);
+        }, 200);
         
         // Set transitioning to false after animation completes
         setTimeout(() => {
           setEditTransitioning(false);
-        }, 500);
+        }, 2000);
       } else {
         // Exiting edit mode
         setEditTransitioning(true);
@@ -70,7 +70,7 @@ function App() {
             editPanelRef.current.classList.remove('exiting');
           }
           setEditTransitioning(false);
-        }, 500);
+        }, 2000);
       }
       
       prevEditModeRef.current = editMode;
@@ -89,7 +89,7 @@ function App() {
           if (infoRef.current) {
             infoRef.current.classList.remove('entering');
           }
-        }, 50);
+        }, 200);
       }
     }
   }, [selectedNode]);
@@ -175,7 +175,7 @@ function App() {
         setEditDescription(selectedNodeData.description || '');
         setEditIcon(selectedNodeData.icon || 'circle');
         setEditMode(true);
-      }, 50);
+      }, 200);
     }
   };
 
@@ -186,7 +186,7 @@ function App() {
     // Add a small delay before changing mode to allow animations to work smoothly
     setTimeout(() => {
       setEditMode(false);
-    }, 50);
+    }, 200);
   };
 
   const saveNodeChanges = () => {
@@ -209,7 +209,7 @@ function App() {
             : node
         ));
         setEditMode(false);
-      }, 50);
+      }, 200);
     }
   };
 

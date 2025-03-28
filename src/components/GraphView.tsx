@@ -145,7 +145,7 @@ const GraphView = ({
       .attr('width', '100%')
       .attr('height', '100%')
       .attr('viewBox', `0 0 ${width} ${height}`)
-      .style('transition', 'all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)');
+      .style('transition', 'all 2.0s cubic-bezier(0.175, 0.885, 0.32, 1.275)');
 
     // Create zoom behavior with smoother transitions
     const zoom = d3.zoom<SVGSVGElement, unknown>()
@@ -164,7 +164,7 @@ const GraphView = ({
     // Create a group for the graph that will be transformed by zoom
     const graph = svg.append('g')
       .attr('class', 'graph')
-      .style('transition', 'transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)');
+      .style('transition', 'transform 2.0s cubic-bezier(0.175, 0.885, 0.32, 1.275)');
     
     // Store reference to graph for later use
     graphRef.current = graph;
@@ -340,7 +340,7 @@ const GraphView = ({
       .on('click', (event) => {
         event.stopPropagation();
         svg.transition()
-          .duration(300)
+          .duration(1200)
           .ease(d3.easeQuadOut)
           .call(zoom.scaleBy, 1.3);
       });
@@ -365,7 +365,7 @@ const GraphView = ({
       .on('click', (event) => {
         event.stopPropagation();
         svg.transition()
-          .duration(300)
+          .duration(1200)
           .ease(d3.easeQuadOut)
           .call(zoom.scaleBy, 0.7);
       });
@@ -389,7 +389,7 @@ const GraphView = ({
       .attr('cursor', 'pointer')
       .on('click', (event) => {
         event.stopPropagation();
-        fitGraphToViewport(svg, graph, node, width, height, 50, 500, true);
+        fitGraphToViewport(svg, graph, node, width, height, 50, 2000, true);
       });
 
     zoomControls.append('text')
@@ -442,7 +442,7 @@ const GraphView = ({
       
       // After dragging ends, refit the graph if significantly changed and not in edit mode
       if (!isEditing) {
-        setTimeout(() => fitGraphToViewport(svg, graph, node, width, height, 50, 500, true), 300);
+        setTimeout(() => fitGraphToViewport(svg, graph, node, width, height, 50, 2000, true), 300);
       }
     }
 
@@ -450,7 +450,7 @@ const GraphView = ({
     if (nodes.length > 0) {
       // Slight delay to allow nodes to initialize positions
       setTimeout(() => {
-        fitGraphToViewport(svg, graph, node, width, height, 50, isEditing ? 0 : 750, true);
+        fitGraphToViewport(svg, graph, node, width, height, 50, isEditing ? 0 : 3000, true);
       }, 100);
     }
 

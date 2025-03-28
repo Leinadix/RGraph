@@ -124,7 +124,7 @@ html, body {
   display: flex;
   flex: 1;
   gap: 1rem;
-  transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: all 2.0s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   min-height: 0; /* Critical for proper flex sizing */
   overflow: hidden;
   position: relative;
@@ -137,7 +137,7 @@ html, body {
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   position: relative;
-  transition: flex 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: flex 2.0s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   will-change: flex-grow;
   min-height: 0; /* Critical for proper flex sizing */
 }
@@ -162,7 +162,7 @@ html, body {
   max-height: 100%;
   opacity: 1;
   transform: translateX(0);
-  transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: all 2.0s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   will-change: transform, opacity, width, flex;
   width: 300px;
   min-width: 300px;
@@ -206,7 +206,7 @@ html, body {
   flex: 1;
   width: 100%;
   margin-top: 0.5rem;
-  transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: all 2.0s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   will-change: transform, opacity, max-height;
   opacity: 1;
   transform: translateY(0);
@@ -243,7 +243,7 @@ html, body {
   padding: 1rem;
   border-radius: 8px;
   width: 100%;
-  transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: all 2.0s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   will-change: transform, opacity;
   transform: translateY(0);
   opacity: 1;

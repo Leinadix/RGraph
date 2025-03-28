@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import './App.css';
 import GraphView from './components/GraphView';
 import { Node, Edge } from './types';
+import * as api from './utils/api';
 
 // Available icons for nodes
 const AVAILABLE_ICONS = [
@@ -19,6 +20,10 @@ function App() {
   const [editMode, setEditMode] = useState<boolean>(false);
   const [editTransitioning, setEditTransitioning] = useState<boolean>(false);
   const [importError, setImportError] = useState<string | null>(null);
+  const [syncEnabled, setSyncEnabled] = useState<boolean>(false);
+  const [syncStatus, setSyncStatus] = useState<string>('Server disconnected');
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [serverConnected, setServerConnected] = useState<boolean>(false);
   
   // Form fields for editing
   const [editLabel, setEditLabel] = useState<string>('');
@@ -31,72 +36,147 @@ function App() {
   const editFormRef = useRef<HTMLDivElement>(null);
   const infoRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Check server connection on load
+  useEffect(() => {
+    const checkConnection = async () => {
+      setIsLoading(true);
+      try {
+        const isConnected = await api.checkServerStatus();
+        setServerConnected(isConnected);
+        setSyncStatus(isConnected ? 'Server connected' : 'Server disconnected');
+        
+        if (isConnected) {
+          // Load initial data
+          await loadGraphData();
+        }
+      } catch (error) {
+        console.error('Server connection error:', error);
+        setServerConnected(false);
+        setSyncStatus('Server disconnected');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    checkConnection();
+    
+    // Set up periodic connection check
+    const connectionInterval = setInterval(async () => {
+      const isConnected = await api.checkServerStatus();
+      if (isConnected !== serverConnected) {
+        setServerConnected(isConnected);
+        setSyncStatus(isConnected ? 'Server connected' : 'Server disconnected');
+        
+        if (isConnected && !serverConnected) {
+          // If we just reconnected, reload data
+          await loadGraphData();
+        }
+      }
+    }, 30000); // Check every 30 seconds
+    
+    return () => clearInterval(connectionInterval);
+  }, [serverConnected]);
+  
+  // Sync data periodically when enabled
+  useEffect(() => {
+    if (!syncEnabled || !serverConnected) return;
+    
+    const syncInterval = setInterval(async () => {
+      await syncData();
+    }, 10000); // Sync every 10 seconds
+    
+    return () => clearInterval(syncInterval);
+  }, [syncEnabled, serverConnected]);
 
   // Handle transitions when edit mode changes
   useEffect(() => {
-    if (editMode !== prevEditModeRef.current) {
-      if (editMode) {
-        // Entering edit mode
-        setEditTransitioning(true);
-        if (editPanelRef.current) {
-          editPanelRef.current.classList.add('entering');
-        }
-        if (editFormRef.current) {
-          editFormRef.current.classList.add('entering');
-        }
-        
-        // Remove animation class after a small delay
-        setTimeout(() => {
-          if (editPanelRef.current) {
-            editPanelRef.current.classList.remove('entering');
-          }
-          if (editFormRef.current) {
-            editFormRef.current.classList.remove('entering');
-          }
-        }, 200);
-        
-        // Set transitioning to false after animation completes
-        setTimeout(() => {
-          setEditTransitioning(false);
-        }, 2000);
-      } else {
-        // Exiting edit mode
-        setEditTransitioning(true);
-        if (editPanelRef.current) {
-          editPanelRef.current.classList.add('exiting');
-        }
-        
-        // Remove animation class and set transitioning false after animation
-        setTimeout(() => {
-          if (editPanelRef.current) {
-            editPanelRef.current.classList.remove('exiting');
-          }
-          setEditTransitioning(false);
-        }, 2000);
-      }
-      
-      prevEditModeRef.current = editMode;
+    // If we're entering edit mode
+    if (editMode && !prevEditModeRef.current) {
+      setEditTransitioning(false);
     }
+    
+    prevEditModeRef.current = editMode;
   }, [editMode]);
 
-  // Handle transitions when node selection changes
+  // Get details of selected node
   useEffect(() => {
-    if (infoRef.current) {
-      if (selectedNode) {
-        // When a node is selected, add entering class temporarily
-        infoRef.current.classList.add('entering');
-        
-        // Remove the entering class after a delay to trigger the animation
-        setTimeout(() => {
-          if (infoRef.current) {
-            infoRef.current.classList.remove('entering');
-          }
-        }, 200);
+    if (selectedNode) {
+      const selectedNodeData = nodes.find(node => node.id === selectedNode);
+      if (selectedNodeData) {
+        // Only set these values if we're not in edit mode already
+        if (!editMode) {
+          setEditLabel(selectedNodeData.label);
+          setEditDescription(selectedNodeData.description || '');
+          setEditIcon(selectedNodeData.icon || 'circle');
+        }
       }
     }
-  }, [selectedNode]);
+  }, [selectedNode, nodes, editMode]);
   
-  const addNode = (x?: number, y?: number) => {
+  // Load graph data from the server
+  const loadGraphData = async () => {
+    try {
+      setIsLoading(true);
+      const data = await api.getGraphData();
+      setNodes(data.nodes);
+      setEdges(data.edges);
+      setSyncStatus('Data loaded from server');
+    } catch (error) {
+      console.error('Failed to load graph data:', error);
+      setSyncStatus('Failed to load data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Sync data with the server
+  const syncData = async () => {
+    try {
+      setSyncStatus('Syncing...');
+      
+      // Get the last sync timestamp
+      const lastSync = await api.getLastSyncTimestamp();
+      
+      // Get changes since last sync
+      const changes = await api.getChangesSince(lastSync);
+      
+      // Update local state with server changes
+      if (changes.nodes.length > 0 || changes.edges.length > 0) {
+        // Apply changes from server
+        setNodes(prevNodes => {
+          const nodeMap = new Map(prevNodes.map(node => [node.id, node]));
+          
+          // Update existing nodes and add new ones
+          changes.nodes.forEach(node => {
+            nodeMap.set(node.id, node);
+          });
+          
+          return Array.from(nodeMap.values());
+        });
+        
+        setEdges(prevEdges => {
+          const edgeMap = new Map(prevEdges.map(edge => [edge.id, edge]));
+          
+          // Update existing edges and add new ones
+          changes.edges.forEach(edge => {
+            edgeMap.set(edge.id, edge);
+          });
+          
+          return Array.from(edgeMap.values());
+        });
+        
+        setSyncStatus(`Synced ${changes.nodes.length} nodes, ${changes.edges.length} edges`);
+      } else {
+        setSyncStatus('No changes to sync');
+      }
+    } catch (error) {
+      console.error('Sync failed:', error);
+      setSyncStatus('Sync failed');
+    }
+  };
+  
+  const addNode = async (x?: number, y?: number) => {
     const newNode: Node = {
       id: `node-${Date.now()}`,
       label: `Node ${nodes.length + 1}`,
@@ -105,7 +185,19 @@ function App() {
       x: x !== undefined ? x : Math.random() * 800,
       y: y !== undefined ? y : Math.random() * 600,
     };
-    setNodes([...nodes, newNode]);
+    
+    // Add to local state first for immediate feedback
+    setNodes(prevNodes => [...prevNodes, newNode]);
+    
+    // Then save to server if connected
+    if (serverConnected) {
+      try {
+        await api.saveNode(newNode);
+      } catch (error) {
+        console.error('Failed to save node to server:', error);
+        setSyncStatus('Failed to save node');
+      }
+    }
   };
 
   const startConnectMode = (nodeId: string) => {
@@ -122,7 +214,17 @@ function App() {
         source: sourceNode,
         target: nodeId,
       };
-      setEdges([...edges, newEdge]);
+      
+      // Add to local state first
+      setEdges(prevEdges => [...prevEdges, newEdge]);
+      
+      // Then save to server if connected
+      if (serverConnected) {
+        api.saveEdge(newEdge).catch(error => {
+          console.error('Failed to save edge to server:', error);
+          setSyncStatus('Failed to save connection');
+        });
+      }
       
       // Exit connect mode
       setConnectMode(false);
@@ -138,12 +240,6 @@ function App() {
           setEditDescription(node.description || '');
           setEditIcon(node.icon || 'circle');
         }
-      } else {
-        // Clear edit fields when deselected
-        setEditLabel('');
-        setEditDescription('');
-        setEditIcon('circle');
-        setEditMode(false);
       }
     }
   };
@@ -153,25 +249,42 @@ function App() {
     setSourceNode(null);
   };
 
-  const deleteNode = (nodeId: string) => {
-    setNodes(nodes.filter(node => node.id !== nodeId));
-    setEdges(edges.filter(edge => edge.source !== nodeId && edge.target !== nodeId));
+  const deleteNode = async (nodeId: string) => {
+    // Remove the node from local state
+    setNodes(prevNodes => prevNodes.filter(node => node.id !== nodeId));
+    
+    // Also remove any edges connected to this node
+    setEdges(prevEdges => prevEdges.filter(
+      edge => edge.source !== nodeId && edge.target !== nodeId
+    ));
+    
+    // Deselect if this was the selected node
     if (selectedNode === nodeId) {
       setSelectedNode(null);
-      setEditMode(false);
+    }
+    
+    // Delete from server if connected
+    if (serverConnected) {
+      try {
+        await api.deleteNode(nodeId);
+        // Edges connected to this node should be automatically deleted on the server
+      } catch (error) {
+        console.error('Failed to delete node from server:', error);
+        setSyncStatus('Failed to delete node');
+      }
     }
   };
 
   const handleEditStart = () => {
-    if (!selectedNode) return;
-    
-    const selectedNodeData = nodes.find((n) => n.id === selectedNode);
-    
-    if (selectedNodeData) {
-      // Set transitioning first
+    if (selectedNode) {
+      // Find the selected node data
+      const selectedNodeData = nodes.find(node => node.id === selectedNode);
+      if (!selectedNodeData) return;
+      
+      // Set transitioning state for animation
       setEditTransitioning(true);
       
-      // Add a small delay to allow the animation to start properly
+      // Wait a short delay for animation to start
       setTimeout(() => {
         setEditLabel(selectedNodeData.label);
         setEditDescription(selectedNodeData.description || '');
@@ -191,7 +304,7 @@ function App() {
     }, 200);
   };
 
-  const saveNodeChanges = () => {
+  const saveNodeChanges = async () => {
     if (selectedNode) {
       // Create a temporary exiting class for animation
       if (editPanelRef.current) {
@@ -199,17 +312,41 @@ function App() {
       }
       
       // After the animation delay, update the node
-      setTimeout(() => {
-        setNodes(nodes.map(node => 
-          node.id === selectedNode 
-            ? { 
-                ...node, 
+      setTimeout(async () => {
+        // Update local state
+        setNodes(prevNodes => {
+          const updatedNodes = prevNodes.map(node => 
+            node.id === selectedNode 
+              ? { 
+                  ...node, 
+                  label: editLabel,
+                  description: editDescription,
+                  icon: editIcon
+                } 
+              : node
+          );
+          
+          return updatedNodes;
+        });
+        
+        // Save to server if connected
+        if (serverConnected) {
+          const updatedNode = nodes.find(node => node.id === selectedNode);
+          if (updatedNode) {
+            try {
+              await api.saveNode({
+                ...updatedNode,
                 label: editLabel,
                 description: editDescription,
                 icon: editIcon
-              } 
-            : node
-        ));
+              });
+            } catch (error) {
+              console.error('Failed to save node changes to server:', error);
+              setSyncStatus('Failed to save changes');
+            }
+          }
+        }
+        
         setEditMode(false);
       }, 200);
     }
@@ -231,7 +368,6 @@ function App() {
     // Convert to JSON string
     const jsonString = JSON.stringify(graphData, null, 2);
     
-    // Create a Blob for the file
     const blob = new Blob([jsonString], { type: 'application/json' });
     
     // Create a download link
@@ -260,7 +396,7 @@ function App() {
   };
 
   // Handle the file selection and import data
-  const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     setImportError(null);
     
@@ -268,7 +404,7 @@ function App() {
     
     const reader = new FileReader();
     
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const content = e.target?.result as string;
         const parsedData = JSON.parse(content);
@@ -306,6 +442,18 @@ function App() {
         setNodes(parsedData.nodes);
         setEdges(parsedData.edges);
         
+        // Import to server if connected
+        if (serverConnected) {
+          try {
+            setSyncStatus('Importing data to server...');
+            await api.importData(parsedData);
+            setSyncStatus('Data imported successfully');
+          } catch (error) {
+            console.error('Failed to import data to server:', error);
+            setSyncStatus('Server import failed');
+          }
+        }
+        
         // Deselect any selected node
         setSelectedNode(null);
         setEditMode(false);
@@ -322,8 +470,41 @@ function App() {
     reader.readAsText(file);
   };
 
+  // Toggle database sync
+  const toggleDatabaseSync = () => {
+    const newSyncState = !syncEnabled;
+    setSyncEnabled(newSyncState);
+    
+    if (newSyncState) {
+      if (serverConnected) {
+        syncData(); // Perform initial sync
+        setSyncStatus('Sync enabled - syncing data');
+      } else {
+        setSyncStatus('Cannot enable sync - server not connected');
+        setSyncEnabled(false); // Force it back off
+      }
+    } else {
+      setSyncStatus(serverConnected ? 'Sync disabled' : 'Server disconnected');
+    }
+  };
+
   return (
     <div className="app">
+      <div className="app-header">
+        <div className="sync-toggle">
+          <label className="sync-label">
+            <span>Database Sync:</span>
+            <div className={`toggle-switch ${syncEnabled ? 'active' : ''}`} onClick={toggleDatabaseSync}>
+              <div className="toggle-slider"></div>
+            </div>
+          </label>
+          <div className={`sync-status ${!serverConnected ? 'error' : ''}`}>{syncStatus}</div>
+        </div>
+      </div>
+      
+      {isLoading ? (
+        <div className="loading-indicator">Loading graph data...</div>
+      ) : (
       <div className="controls">
         <button onClick={() => addNode()}>Add Node</button>
         {!connectMode && !editMode && !editTransitioning ? (
@@ -448,34 +629,38 @@ function App() {
           </div>
         )}
       </div>
+      )}
       
       <div className="main-content">
-        <div className={`graph-container ${editMode || (selectedNode && !editMode && !editTransitioning) ? 'with-panel' : 'full-width'}`}>
-          <GraphView 
-            nodes={nodes} 
-            edges={edges} 
-            selectedNode={selectedNode}
-            sourceNode={connectMode ? sourceNode : null}
-            connectMode={connectMode}
-            onSelectNode={handleNodeSelect}
-            onAddNode={handleAddNodeAtPosition}
-            onStartConnectMode={startConnectMode}
-            isEditing={editMode || editTransitioning}
-          />
-        </div>
+        <GraphView 
+          nodes={nodes}
+          edges={edges}
+          selectedNode={selectedNode}
+          sourceNode={sourceNode}
+          connectMode={connectMode}
+          onSelectNode={handleNodeSelect}
+          onAddNode={handleAddNodeAtPosition}
+          onStartConnectMode={startConnectMode}
+          isEditing={editMode}
+        />
         
         <div 
-          className={`node-info-panel ${!selectedNode || editMode || editTransitioning ? 'hidden' : ''}`} 
+          className={`node-info ${!selectedNode || editMode ? 'hidden' : ''}`}
           ref={infoRef}
         >
-          {nodes.find(n => n.id === selectedNode) && (
+          {selectedNode && (
             <>
-              <h3>{nodes.find(n => n.id === selectedNode)?.label}</h3>
-              {nodes.find(n => n.id === selectedNode)?.description && (
-                <p className="node-description">
-                  {nodes.find(n => n.id === selectedNode)?.description}
-                </p>
-              )}
+              {(() => {
+                const node = nodes.find(n => n.id === selectedNode);
+                return node ? (
+                  <div>
+                    <h3>{node.label}</h3>
+                    {node.description && (
+                      <div className="node-description">{node.description}</div>
+                    )}
+                  </div>
+                ) : null;
+              })()}
             </>
           )}
         </div>
